@@ -33,6 +33,8 @@
 
 #define LONGPRESS 1000000
 
+#define N_GROUPS 8
+#define TEAMS_PER_GROUP 4
 
 // Global variables
 uint8_t gr[]={0,0}, team[]={0,1};
@@ -53,6 +55,20 @@ uint8_t sector[4096];
 int8_t cur_res_page;
 int8_t write_page;
 
+typedef struct team_group_result {
+  uint8_t team_id;
+  uint8_t matches;
+  uint8_t winners;
+  uint8_t losers;
+  uint8_t draws;
+  uint8_t goals_shot;
+  uint8_t goals_received;
+  int8_t goal_difference;
+  uint8_t points;
+} team_group_result_s;
+
+team_group_result_s team_group_results[N_GROUPS * TEAMS_PER_GROUP];
+
 // offsets for the flag pictures
 uint32_t offsets[] = {0 , 15000 , 30000 , 45000 , 60000 , 75000 , 90000 , 105000 , 120000 , 135000 , 150000 , 165000 , 180000 , 195000 , 210000 , 225000 , 240000 , 255000 , 270000 , 285000 , 300000 , 315000 , 330000 , 345000 , 360000 , 375000 , 390000 , 405000 , 420000 , 435000 , 450000 , 465000  };
 
@@ -72,7 +88,7 @@ char countries[][13] = { "Qatar", "Ecuador", "Senegal", "Netherlands",
            "Espagne", "Costa Rica", "Germany", "Japan",
            "Belgium", "Canada", "Marocco", "Croatia",
            "Brazil", "Serbia", "Switzerland", "Cameroon",
-           "Portugal", "Ghana", "Uruguay", "N.Korea"
+           "Portugal", "Ghana", "Uruguay", "S.Korea"
 };
 
 void eraseSector()
@@ -88,17 +104,6 @@ void eraseSector()
 
   return;
 }
-
-//void writeSector()
-//{
-//#ifdef USBDEBUG
-//  putchar('w');
-//  for (int i=0; i<4096; i++)
-//    {
-//      putchar(sector[i]);
-//    }
-//#endif
-//}
 
 void writePage()
 {
@@ -611,6 +616,150 @@ void changeGoal( Pico_ST7789 &tft, uint8_t group, uint8_t isel, uint8_t gsign, u
 
 }
 
+void swap_teams(uint8_t t1, uint8_t t2)
+{
+  team_group_result_s tmp = team_group_results[t2];
+  team_group_results[t2]=team_group_results[t1];
+  team_group_results[t1]=tmp;
+}
+
+void groupRanking()
+{
+  // pointers to the matches in the group for the various teams in the group:
+  uint8_t team_id = 0; // an index to identify the team and find it's name in the country array
+  for ( int igr = 0; igr < N_GROUPS; igr++ )
+    {
+      for ( int iteam = 0; iteam < TEAMS_PER_GROUP; iteam++ )
+	{
+	  int ix = igr*TEAMS_PER_GROUP + iteam;	  
+	  team_group_results[ix].team_id = team_id;
+	  team_group_results[ix].matches = 0;
+	  team_group_results[ix].winners = 0;
+	  team_group_results[ix].losers = 0;
+	  team_group_results[ix].draws = 0;
+	  team_group_results[ix].goals_shot = 0;
+	  team_group_results[ix].goals_received = 0;
+	  team_group_results[ix].goal_difference = 0;
+	  team_group_results[ix].points = 0;
+
+	  // now loop through all results of the group matches and adjust according to the matches
+	  // where this team was involved.
+	  uint8_t eq0, eq1, mix, res_off, us, them, iline=0;
+	  for ( eq0=0; eq0<3; eq0++ )
+	    {
+	      for ( eq1=eq0+1; eq1<4; eq1++)
+		{
+		  mix = 10;
+		  if (eq0 == iteam)
+		    mix = 0;
+		  else if ( eq1 == iteam )
+		    mix = 1;
+		  if ( mix < 2 )
+		    {
+		      // we found our team, calculate the index to tha result of the match and update the
+		      // match information
+		      // offset into the results page:
+		      res_off = (cur_res_page * 256) + igr * 12 + iline*2;
+		      // is our team on the right or the left side of the match line?
+		      if ( mix == 0 )
+			{
+			  us = sector[res_off];
+			  them = sector[res_off+1];
+			}
+		      else
+			{
+			  us = sector[res_off + 1];
+			  them = sector[res_off];
+			}
+		      if ( us == 255 )
+			{
+			  iline += 1;
+			  continue;
+			}
+		      // now update the info
+		      team_group_results[ix].matches += 1;
+		      team_group_results[ix].goals_shot += us;
+		      team_group_results[ix].goals_received += them;
+		      if ( us > them )
+			{
+			  team_group_results[ix].winners += 1;
+			  team_group_results[ix].points += 3;
+			}
+		      else if ( us == them )
+			{
+			  team_group_results[ix].draws += 1;
+			  team_group_results[ix].points += 1;
+			}
+		      else
+			{
+			  team_group_results[ix].losers += 1;
+			}
+		      team_group_results[ix].goal_difference =
+			(int8_t)team_group_results[ix].goals_shot - (int8_t)team_group_results[ix].goals_received;
+			
+		    }
+		  iline += 1;
+		  //team_id += 1;
+		}
+	    }
+	  team_id += 1;
+	}
+    // the group results are evaluated, now we sort the group.
+    uint8_t eq0, eq1;
+    for( eq0=3; eq0>0; eq0-- )
+    	for ( eq1=eq0; eq1>0; eq1-- )
+    	  {
+    	    uint8_t t1 = igr*TEAMS_PER_GROUP + eq1;
+    	    uint8_t t2 = t1 - 1;
+    	    if ( team_group_results[t1].winners > team_group_results[t2].winners )
+    	      {
+    		swap_teams(t1,t2);
+    	      }
+    	    else if ( team_group_results[t1].winners == team_group_results[t2].winners )
+    	      if ( team_group_results[t1].goal_difference > team_group_results[t2].goal_difference )
+    		{
+    		  swap_teams(t1,t2);
+    		}
+    	      else if (team_group_results[t1].goal_difference == team_group_results[t2].goal_difference )
+    		if ( team_group_results[t1].goals_shot > team_group_results[t2].goals_shot )
+    		  {
+    		    swap_teams( t1,t2 );
+    		  }    
+	  }
+    }
+}
+
+void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
+{
+  tft.setFont( &FreeMonoOblique12pt7b );
+  char mtxt[] = {"Group Ranking"};
+  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, 0x07e0, 0x07e0, 1 );
+  tft.setFont( &FreeMono9pt7b );
+  tft.fillRect(0,60,tft_width,tft_height-60,BLACK);
+  char thead[] = { " M W D L P  GD  G" };
+  uint16_t yoff = 90;
+  tft.drawTextG ( tft_width - 17*11, yoff, thead, GREEN, BLACK, 1 );
+  uint8_t ix_t = group*4;
+  char line[18];
+  for (uint8_t iteam = ix_t; iteam < ix_t+TEAMS_PER_GROUP; iteam++ )
+    {
+      yoff += 24;
+      tft.drawTextG(0, yoff, countries[team_group_results[iteam].team_id], YELLOW, BLACK, 1);
+      snprintf(line, 17, "%2d%2d%2d%2d%2d%4d%3d",
+	       team_group_results[iteam].matches,
+	       team_group_results[iteam].winners,
+	       team_group_results[iteam].draws,
+	       team_group_results[iteam].losers,
+	       team_group_results[iteam].points,
+	       team_group_results[iteam].goal_difference,
+	       team_group_results[iteam].goals_shot
+	       );
+      tft.drawTextG( tft_width - 17*11, yoff, line, YELLOW, BLACK, 1);
+    }
+  getButton();
+  tft.fillRect(0,60,tft_width,tft_height-60,BLACK);
+}
+
 void results_page(Pico_ST7789 &tft)
 {
   tft.fillScreen( BLACK );
@@ -625,6 +774,7 @@ void results_page(Pico_ST7789 &tft)
   while ( ! stop )
     {
       drawGroup( tft, group, isel );
+      
       uint8_t but = getButton();
       uint8_t gsign = 1;
       
@@ -636,9 +786,17 @@ void results_page(Pico_ST7789 &tft)
       // but is 1 2 3 or 4
       if ( but == BUTTON3 )
 	{
-	  isel = (isel+1)%6;
-	  if ( dirty )
-	    writeResults();
+	  if ( gsign == 1 )
+	    {
+	      isel = (isel+1)%6;
+	      if ( dirty )
+		writeResults();
+	    }
+	  else
+	    {
+	      groupRanking();
+	      displayGroupRanking( tft, group);
+	    }
 	}
       else if ( (but == BUTTON1) || (but == BUTTON2))
 	{
