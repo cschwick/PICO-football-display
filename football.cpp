@@ -279,8 +279,8 @@ void displayTime( Pico_ST7789 *tft )
   tft->drawTextG( tft_width/2-7, 235, ":",  color, BLACK,1 ); 
   tft->drawTextG( tft_width/2+7, 235, sstr, color, BLACK,1 ); 
   tft->setFont( &FreeMonoBold18pt7b );
-}
 
+}
 bool timercb ( struct repeating_timer *t )
 {
   
@@ -704,10 +704,10 @@ void groupRanking()
 	    }
 	  team_id += 1;
 	}
-    // the group results are evaluated, now we sort the group.
+    // the group results are evaluated, now we bubble sort the group.
     uint8_t eq0, eq1;
-    for( eq0=3; eq0>0; eq0-- )
-    	for ( eq1=eq0; eq1>0; eq1-- )
+    for( eq0=0; eq0<3; eq0++ )
+    	for ( eq1=3; eq1>eq0; eq1-- )
     	  {
     	    uint8_t t1 = igr*TEAMS_PER_GROUP + eq1;
     	    uint8_t t2 = t1 - 1;
