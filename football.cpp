@@ -188,7 +188,7 @@ void readSector()
       sector[i] = getchar();
     }
 #else
-  // make a copy of the sector since we night want to edit it
+  // make a copy of the sector since we might want to edit it
   int i=0;
   for( uint8_t *ptr= (uint8_t*)(resultoffset+XIP_BASE);
        ptr<(uint8_t*)(resultoffset+XIP_BASE+4096);
@@ -378,9 +378,9 @@ uint8_t match_mode( Pico_ST7789 &tft )
 	    add_repeating_timer_us( uint64_t(ONESEC/accel), timercb, &tft, &timer_s );
 	    playing = true;
 	  }
-	  //but=BUTTON3;
+	  
 	}
-      else
+      else // button4 the main mode switch button
 	{
 	  if (playing) {
 	    cancel_repeating_timer(&timer_s);
@@ -609,8 +609,8 @@ void changeGoal( Pico_ST7789 &tft, uint8_t group, uint8_t isel, uint8_t gsign, u
     pix += 1;
   sector[pix] += gsign;
   dirty = true;
-  if (sector[pix] < 0)
-    sector[pix] = 0;
+  if (sector[pix] == 0xfe)
+    sector[pix] = 0xff;
 
   drawGroup(tft,group,isel);
 
@@ -733,7 +733,8 @@ void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
 {
   tft.setFont( &FreeMonoOblique12pt7b );
   char mtxt[] = {"Group Ranking"};
-  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, 0x07e0, 0x07e0, 1 );
+  tft.fillRect(  tft_width/2-7.5*14,30-15, 14*16,14, BLACK );
+  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, GREEN, BLACK, 1 );
   tft.setFont( &FreeMono9pt7b );
   tft.fillRect(0,60,tft_width,tft_height-60,BLACK);
   char thead[] = { " M W D L P  GD  G" };
@@ -745,7 +746,7 @@ void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
     {
       yoff += 24;
       tft.drawTextG(0, yoff, countries[team_group_results[iteam].team_id], YELLOW, BLACK, 1);
-      snprintf(line, 17, "%2d%2d%2d%2d%2d%4d%3d",
+      snprintf(line, 18, "%2d%2d%2d%2d%2d%4d%3d",
 	       team_group_results[iteam].matches,
 	       team_group_results[iteam].winners,
 	       team_group_results[iteam].draws,
@@ -760,6 +761,18 @@ void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
   tft.fillRect(0,60,tft_width,tft_height-60,BLACK);
 }
 
+void finals_page( Pico_ST7789 &tft)
+{
+  tft.fillScreen( BLACK );
+  tft.setFont( &FreeMonoOblique12pt7b );
+  char mtxt[] = {"Final Matches"};
+  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, 0x07e0, 0x07e0, 1 );
+
+  int but = 9;
+  but = getButton();
+  return;
+}
+
 void results_page(Pico_ST7789 &tft)
 {
   tft.fillScreen( BLACK );
@@ -767,12 +780,16 @@ void results_page(Pico_ST7789 &tft)
   
   tft.setFont( &FreeMonoOblique12pt7b );
   char mtxt[] = {"Group Matches"};
-  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, 0x07e0, 0x07e0, 1 );
+  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, GREEN, BLACK, 1 );
   uint8_t isel = 0;
   
   bool stop = false;
   while ( ! stop )
     {
+      tft.setFont( &FreeMonoOblique12pt7b );
+      char mtxt[] = {"Group Matches"};
+      tft.fillRect(  tft_width/2-7.5*14,30-15, 14*16,14, BLACK );
+      tft.drawTextG( tft_width/2-7.5*14,30, mtxt, GREEN, BLACK, 1 );
       drawGroup( tft, group, isel );
       
       uint8_t but = getButton();
@@ -808,7 +825,7 @@ void results_page(Pico_ST7789 &tft)
 	  if (dirty )
 	    writeResults();
 	}
-      else
+      else // long press main button
 	stop = true; 
     }
 }
@@ -824,7 +841,7 @@ void footballField( Pico_ST7789 &tft )
   tft.drawImageF( (tft_width-320)/2, 0, 320, 240, (uint16_t*)picoffsets[3] );
   tft.setFont( &FreeMonoOblique12pt7b );
   char mtxt[] = {"Worldcup 2022"};
-  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, 0x07e0, 0x07e0, 1 );
+  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, GREEN, BLACK, 1 );
   getButton();
 
   tft.fillScreen( 0xEF7D);
@@ -880,42 +897,46 @@ int main()
   gpio_put( TFT_BACKLIGHT, 1 );
   
   //setup a gpio for the button
+  // Second from right : BUTTON 1
   gpio_init(BUTTON1);
   gpio_set_dir( BUTTON1, false);
   gpio_pull_up( BUTTON1 );
+  // right most : BUTTON 2
   gpio_init(BUTTON2);
   gpio_set_dir( BUTTON2, false);
   gpio_pull_up( BUTTON2 );
+  // second from left : BUTTON 3
   gpio_init(BUTTON3);
   gpio_set_dir( BUTTON3, false);
   gpio_pull_up( BUTTON3 );
+  // 1st from left : BUTTON 4 (main mode switch)
   gpio_init(BUTTON4);
   gpio_set_dir( BUTTON4, false);
   gpio_pull_up( BUTTON4 );
-  bool but1 = true;
-  bool but2 = true;
-  bool but3 = true;
-  bool but4 = true;
+  //bool but1 = true;
+  //bool but2 = true;
+  //bool but3 = true;
+  //bool but4 = true;
 
   footballField( tft );
   readSector();
-  uint16_t nflag = 32;
-  uint16_t iflag = 0;
-  uint8_t width = 100;
-  uint8_t height = 75;
-  uint32_t offset;
-  uint16_t i = 0;
-  uint16_t xoff = 10;
-  uint16_t yoff = 0 ;    
-  uint32_t foff = 0x10100000;
-  uint8_t but = 0;
-  
-  but = getButton();
+  //uint16_t nflag = 32;
+  //uint16_t iflag = 0;
+  //uint8_t width = 100;
+  //uint8_t height = 75;
+  //uint32_t offset;
+  //uint16_t i = 0;
+  //uint16_t xoff = 10;
+  //uint16_t yoff = 0 ;    
+  //uint32_t foff = 0x10100000;
+
+  uint8_t but = getButton();
   while(1) {
     tft.setFont( &FreeMonoOblique12pt7b );
     if( but & 0x80 )
       {
 	results_page( tft );
+	finals_page( tft );
       }
     but = enterMode( TEAM_SEL_MODE, tft );
     but = enterMode( TIME_SEL_MODE, tft );

@@ -711,13 +711,16 @@ void Pico_ST7789::drawTextG(uint16_t x, uint16_t y, const char *_text,
       cursor_x = 0;
       cursor_y += (int16_t)size * _gfxFont->yAdvance;
     }
-    if (bg != color)
-      {
-	// this +5 offset works for the 9p font ... not general...
-	fillRect( cursor_x,(cursor_y-size*(_gfxFont->yAdvance-5)),size*glyph->xAdvance,size*_gfxFont->yAdvance,bg);
-      }
+    //if (bg != color)
+    //  {
+    //	fillRect( cursor_x-size*glyph->xOffset,
+    //		  cursor_y-size*glyph->yOffset,
+    //		  size*glyph->xAdvance,
+    //		  size*_gfxFont->yAdvance,
+    //		  bg);
+    //  }
     if((w > 0) && (h > 0)) { // bitmap available
-      drawCharG(cursor_x,cursor_y,c,color,color,size);
+      drawCharG(cursor_x,cursor_y,c,color,bg,size);
     }
     cursor_x += glyph->xAdvance * (int16_t)size;
   }
@@ -739,6 +742,20 @@ void Pico_ST7789::drawCharG(uint16_t x, uint16_t y, uint8_t c, uint16_t color,
     xo16 = xo;
     yo16 = yo;
   }
+
+  if (bg != color)
+    {
+//      fillRect( x-size*glyph->xOffset,
+//		y+size*glyph->yOffset,
+//		size*glyph->xAdvance,
+//		size*_gfxFont->yAdvance,
+//		bg);
+      fillRect( x,
+		y - size*glyph->height,
+		size*glyph->xAdvance,
+		size*_gfxFont->yAdvance,
+		bg);
+    }
 
   for (yy = 0; yy < h; yy++) {
     for (xx = 0; xx < w; xx++) {
