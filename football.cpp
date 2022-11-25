@@ -122,7 +122,7 @@ void writePage()
   //printf("flash range programm %08x %08x 256\n", resultoffset, off);
   //sleep_ms(200);
   uint32_t irqstat = save_and_disable_interrupts();
-  flash_range_program( resultoffset + off, &(sector[off]), 256 );
+  flash_range_program( resultoffset + write_page*256, &(sector[off]), 256 );
   restore_interrupts( irqstat );
   //printf("done\n");
 #endif
