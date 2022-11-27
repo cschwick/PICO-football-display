@@ -55,6 +55,9 @@ uint8_t sector[4096];
 int8_t cur_res_page;
 int8_t write_page;
 
+uint8_t draw[16+8+4+2+1]; // first round we do not need results, but to make looping easier
+// we also reserve place for 2 result bytes
+
 typedef struct team_group_result {
   uint8_t team_id;
   uint8_t matches;
@@ -152,10 +155,10 @@ void getCurrentResPage()
       bool empty = true;
       for ( uint8_t *ptr = sector + page*256; ptr < sector + (page+1)*256; ptr++ )
 	{
-	  if ( *ptr != 0xff )
+	  if ( (*ptr) != 0xff )
 	    {
 	      empty = false;
-	      continue;
+	      break;
 	    }
 	}
       if ( empty )
@@ -536,6 +539,40 @@ uint8_t enterMode( uint32_t mode, Pico_ST7789 &tft )
   }
   return but;
 }
+void getGoalStrings( uint16_t ix, char *g0str, char *g1str)
+{
+  uint8_t g0=sector[ix];
+  uint8_t g1=sector[ix+1];
+
+  if ( g0 == 0xff )
+    {
+      strcpy( g0str, "-" );
+    }
+  else
+    {
+      sprintf(g0str,"%d",g0);
+    }
+  if ( g1 == 0xff )
+    {
+      strcpy( g1str, "-" );
+    }
+  else
+    {
+      sprintf(g1str,"%d",g1);
+    }
+}
+
+void drawGoalStrings( Pico_ST7789 &tft, char* g0str, char* g1str, uint16_t yoff )
+{
+  uint8_t coff = strlen(g0str)+strlen(g1str)+1;
+  tft.setFont( &FreeMonoBold9pt7b );
+  tft.drawTextG( tft_width - coff*11, yoff, g0str, RED, BLACK, 1 );
+  coff -= strlen(g0str);
+  tft.drawTextG( tft_width - coff*11, yoff, ":", RED, BLACK, 1 );
+  coff -= 1;
+  tft.drawTextG( tft_width - coff*11, yoff, g1str, RED, BLACK, 1 );
+}
+
 
 void drawGroup( Pico_ST7789 &tft, uint8_t group, uint8_t isel )
 {
@@ -548,8 +585,8 @@ void drawGroup( Pico_ST7789 &tft, uint8_t group, uint8_t isel )
 
   uint8_t eq0,eq1,ic0,ic1,iline = 0;
   // match table
-  uint16_t xoff=0, yoff=90;
-  uint8_t g0=0, g1=0;
+  uint16_t yoff=90;
+  //uint8_t g0=0, g1=0;
   char g0str[8], g1str[8];
   for (eq0 = 0; eq0<3; eq0++)
     {
@@ -567,36 +604,40 @@ void drawGroup( Pico_ST7789 &tft, uint8_t group, uint8_t isel )
 
 	  // get the results:
 	  uint16_t pix = (cur_res_page * 256) + group * 12 + iline * 2;
-	  g0 = sector[pix];
-	  g1 = sector[pix+1];
-	  if ( g0 == 0xff )
-	    {
-	      strcpy( g0str, "-" );
-	    }
-	  else
-	    {
-	      sprintf(g0str,"%d",g0);
-	    }
-	  if ( g1 == 0xff )
-	    {
-	      strcpy( g1str, "-" );
-	    }
-	  else
-	    {
-	      sprintf(g1str,"%d",g1);
-	    }
+	  getGoalStrings( pix, g0str, g1str );
+//	  g0 = sector[pix];
+//	  g1 = sector[pix+1];
+//	  if ( g0 == 0xff )
+//	    {
+//	      strcpy( g0str, "-" );
+//	    }
+//	  else
+//	    {
+//	      sprintf(g0str,"%d",g0);
+//	    }
+//	  if ( g1 == 0xff )
+//	    {
+//	      strcpy( g1str, "-" );
+//	    }
+//	  else
+//	    {
+//	      sprintf(g1str,"%d",g1);
+//	    }
 	  // calc offsets
-	  uint8_t coff = strlen(g0str)+strlen(g1str)+1;
-	  tft.setFont( &FreeMonoBold9pt7b );
-	  tft.drawTextG( tft_width - coff*11, yoff, g0str, RED, BLACK, 1 );
-	  coff -= strlen(g0str);
-	  tft.drawTextG( tft_width - coff*11, yoff, ":", RED, BLACK, 1 );
-	  coff -= 1;
-	  tft.drawTextG( tft_width - coff*11, yoff, g1str, RED, BLACK, 1 );
+	  drawGoalStrings( tft, g0str, g1str, yoff );
+	  
+//	  uint8_t coff = strlen(g0str)+strlen(g1str)+1;
+//	  tft.setFont( &FreeMonoBold9pt7b );
+//	  tft.drawTextG( tft_width - coff*11, yoff, g0str, RED, BLACK, 1 );
+//	  coff -= strlen(g0str);
+//	  tft.drawTextG( tft_width - coff*11, yoff, ":", RED, BLACK, 1 );
+//	  coff -= 1;
+//	  tft.drawTextG( tft_width - coff*11, yoff, g1str, RED, BLACK, 1 );
+
 	  yoff += 24;
 	  iline += 1;
 	}
-      g1++;
+      //g1++;
     }
   return;
 }
@@ -612,7 +653,7 @@ void changeGoal( Pico_ST7789 &tft, uint8_t group, uint8_t isel, uint8_t gsign, u
   if (sector[pix] == 0xfe)
     sector[pix] = 0xff;
 
-  drawGroup(tft,group,isel);
+  //drawGroup(tft,group,isel);
 
 }
 
@@ -644,7 +685,8 @@ void groupRanking()
 
 	  // now loop through all results of the group matches and adjust according to the matches
 	  // where this team was involved.
-	  uint8_t eq0, eq1, mix, res_off, us, them, iline=0;
+	  uint8_t eq0, eq1, mix, us, them, iline=0;
+	  uint16_t res_off;
 	  for ( eq0=0; eq0<3; eq0++ )
 	    {
 	      for ( eq1=eq0+1; eq1<4; eq1++)
@@ -729,6 +771,47 @@ void groupRanking()
     }
 }
 
+void makeDraw()
+{
+  // results come from the flash, teams ids are calculated from group results (and results for later rounds)
+  // First round
+  uint16_t rix = (cur_res_page * 256) + 96;
+  uint8_t ixdraw = 0;
+  for (uint8_t ipair=0; ipair<4; ipair++)
+    {
+      team_group_result_s tg1 = team_group_results[ipair*2*4];
+      team_group_result_s tg2 = team_group_results[ipair*2*4 + 5];
+      draw[ixdraw++] = tg1.team_id;
+      draw[ixdraw++] = tg2.team_id;
+      tg2 = team_group_results[ipair*2*4 + 4];
+      tg1 = team_group_results[ipair*2*4 + 1];
+      draw[ixdraw++] = tg2.team_id;
+      draw[ixdraw++] = tg1.team_id;
+    }
+
+  // Following rounds: code for every round here (no loop)
+  // last 16:
+  for (uint8_t im=0; im<15; im++)
+    {
+      if (sector[rix] == 0xff || sector[rix+1] == 0xff )
+	continue;
+      if ( sector[rix] > sector[rix+1] )
+	{
+	  draw[ixdraw++] = draw[im];
+	}
+      else
+	{
+	  draw[ixdraw++] = draw[im+1];
+	}
+      rix += 2;
+    }
+
+  //for (int i=0; i<31; i++ ) {
+  //  printf("%d\n", draw[i]);
+  //}
+  
+}
+
 void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
 {
   tft.setFont( &FreeMonoOblique12pt7b );
@@ -761,16 +844,86 @@ void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
   tft.fillRect(0,60,tft_width,tft_height-60,BLACK);
 }
 
-void finals_page( Pico_ST7789 &tft)
+void display_finals_n( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
+{
+}
+
+void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
 {
   tft.fillScreen( BLACK );
   tft.setFont( &FreeMonoOblique12pt7b );
   char mtxt[] = {"Final Matches"};
-  tft.drawTextG( tft_width/2-7.5*14,30, mtxt, 0x07e0, 0x07e0, 1 );
+  switch (n_round)
+    {
+    case 1:
+      tft.drawTextG( tft_width/2-7.5*14,30, "Round of last 8", 0x07e0, 0x07e0, 1 );
+      break;
+    case 2:
+      tft.drawTextG( tft_width/2-7.5*14,30, "Quarter Finals", 0x07e0, 0x07e0, 1 );
+      break;
+    case 3:
+      tft.drawTextG( tft_width/2-7.5*14,30, "Half Finals", 0x07e0, 0x07e0, 1 );
+      break;
+    case 4:
+      tft.drawTextG( tft_width/2-7.5*14,30, "Final", 0x07e0, 0x07e0, 1 );
+      break;
+    }
 
-  int but = 9;
-  but = getButton();
-  return;
+  char g0str[8], g1str[8];
+  uint16_t yoff = 90-24, iline = 0 ;
+  uint8_t n_matches = 1<<(4-n_round); // 8,4,2.1 for nround from 1 to 4
+
+  uint8_t r_offset = 0;
+  for ( uint8_t i=8; i>(1<<(4-n_round)); i/=2 ) // 0 8 12 14 15 
+    {
+      r_offset += i;
+    }
+  
+  uint8_t draw_offset = r_offset*3; // 3*(8,4,2.1) for nround from 1 to 4
+  uint16_t rix = (cur_res_page * 256) + 96 + r_offset*2; // pointing after the 8*6 group matches  
+
+  for (uint8_t im = 0; im<n_matches; im++)
+  {
+    if ( iline == isel )
+      tft.setFont( &FreeMonoBold9pt7b );
+    else
+      tft.setFont( &FreeMono9pt7b );
+    
+    tft.drawTextG( 0,yoff,countries[draw[draw_offset+im*2]],YELLOW,BLACK,1);
+    tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);	  
+    tft.drawTextG( tft_width/2-15,yoff,countries[draw[draw_offset+im*2+1]],YELLOW,BLACK,1);
+      
+    rix += 2;
+    getGoalStrings( rix, g0str, g1str );
+    drawGoalStrings( tft, g0str, g1str, yoff );
+
+    rix+=2;
+    yoff += 24;
+    iline++;
+  }
+  
+}
+
+void finals_page( Pico_ST7789 &tft)
+{
+  groupRanking();
+  uint8_t isel = 0, iround = 1;
+  makeDraw();
+
+
+  while (true)
+    {
+      display_finals(tft, iround, isel);
+      int but = 9;
+      but = getButton();
+      switch (but)
+	{
+	case BUTTON4:
+	  iround = iround == 5?1:iround++;
+	  break;
+	}
+      return;
+    }
 }
 
 void results_page(Pico_ST7789 &tft)
@@ -920,6 +1073,7 @@ int main()
 
   footballField( tft );
   readSector();
+  //printf( "cur_res_page %d    write_page %d\n",cur_res_page,write_page);
   //uint16_t nflag = 32;
   //uint16_t iflag = 0;
   //uint8_t width = 100;

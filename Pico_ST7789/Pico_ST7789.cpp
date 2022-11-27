@@ -696,6 +696,23 @@ void Pico_ST7789::drawTextG(uint16_t x, uint16_t y, const char *_text,
   last_char  = _gfxFont->last;
   textlen    = strlen(_text);
 
+  if (bg != color)
+    {
+      // This will not work with wwapping text but for non wrapping text
+      // it is fast and gives a nice continuous background on which is
+      // written the text.
+      uint16_t tw = 0;
+      for ( uint16_t i =0; i < textlen; i++ )
+	{
+	  tw += size *_gfxFont->glyph[_text[i]-first_char].xAdvance;
+	}
+      fillRect( cursor_x,
+		cursor_y - size * (_gfxFont->yAdvance - 1),
+		tw,
+		size*_gfxFont->yAdvance,
+		bg );
+    }
+
   for(i = 0; i < textlen; i++){
     uint8_t c = _text[i];
     if (c<first_char || c>last_char) {
@@ -711,16 +728,8 @@ void Pico_ST7789::drawTextG(uint16_t x, uint16_t y, const char *_text,
       cursor_x = 0;
       cursor_y += (int16_t)size * _gfxFont->yAdvance;
     }
-    //if (bg != color)
-    //  {
-    //	fillRect( cursor_x-size*glyph->xOffset,
-    //		  cursor_y-size*glyph->yOffset,
-    //		  size*glyph->xAdvance,
-    //		  size*_gfxFont->yAdvance,
-    //		  bg);
-    //  }
     if((w > 0) && (h > 0)) { // bitmap available
-      drawCharG(cursor_x,cursor_y,c,color,bg,size);
+      drawCharG(cursor_x,cursor_y,c,color,color,size);
     }
     cursor_x += glyph->xAdvance * (int16_t)size;
   }
@@ -747,14 +756,17 @@ void Pico_ST7789::drawCharG(uint16_t x, uint16_t y, uint8_t c, uint16_t color,
     {
 //      fillRect( x-size*glyph->xOffset,
 //		y+size*glyph->yOffset,
-//		size*glyph->xAdvance,
-//		size*_gfxFont->yAdvance,
-//		bg);
       fillRect( x,
 		y - size*glyph->height,
 		size*glyph->xAdvance,
 		size*_gfxFont->yAdvance,
 		bg);
+      
+//      fillRect( x,
+//		y + size*glyph->height,
+//		size*glyph->xAdvance,
+//		size*_gfxFont->yAdvance,
+//		bg);
     }
 
   for (yy = 0; yy < h; yy++) {

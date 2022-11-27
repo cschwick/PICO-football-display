@@ -12,10 +12,7 @@ from pprint import pprint
 SECTORFILE = "sector.bin"
 
 sername = "/dev/ttyACM0"
-ser = serial.Serial(
-    port = sername,
-#    baudrate = 57600
-)
+
 
 def writeSector( sector ):
     fd = open(SECTORFILE, "wb")
@@ -37,13 +34,36 @@ for i in range(0,4096):
     sector += fd.read(1)
 fd.close()
 
-#while True:
-#    inb = ser.readline()
-#    print( inb )
+# for debugging:
+def connect():
+    while 1:
+        print("try to connect")
+        try:
+            ser = serial.Serial(
+                port = sername,
+            )
+            print( "connected")
+            return ser
+        except:
+            print("did not succeed")
+            sleep( 0.5 )
+
+ser = connect()
+while True:
+    try:
+        inb = ser.readline()
+        print( inb )
+    except Exception as e:
+        ser.close()
+        print("lost connection:", e)
+        print()
+        ser = connect()
+        
 
 while True:
     inb = ser.read(size=1)
     print( repr(inb) )
+
     if inb[0] == 114:
         print("sending sector")
         ser.write(sector);
