@@ -55,8 +55,9 @@ uint8_t sector[4096];
 int8_t cur_res_page;
 int8_t write_page;
 
-uint8_t draw[16+8+4+2+1]; // first round we do not need results, but to make looping easier
-// we also reserve place for 2 result bytes
+uint8_t draw[16+8+4+2+2]; // first round we do not need results,
+// but to make looping easier
+// include a match for the third place
 
 typedef struct team_group_result {
   uint8_t team_id;
@@ -642,7 +643,7 @@ void drawGroup( Pico_ST7789 &tft, uint8_t group, uint8_t isel )
   return;
 }
 
-void changeGoal( Pico_ST7789 &tft, uint8_t group, uint8_t isel, uint8_t gsign, uint8_t but )
+void changeGoal( uint8_t group, uint8_t isel, uint8_t gsign, uint8_t but )
 {
   // get the results:
   uint16_t pix = (cur_res_page * 256) + group * 12 + isel * 2;
@@ -652,8 +653,6 @@ void changeGoal( Pico_ST7789 &tft, uint8_t group, uint8_t isel, uint8_t gsign, u
   dirty = true;
   if (sector[pix] == 0xfe)
     sector[pix] = 0xff;
-
-  //drawGroup(tft,group,isel);
 
 }
 
@@ -789,13 +788,12 @@ void makeDraw()
       draw[ixdraw++] = tg1.team_id;
     }
 
-  // Following rounds: code for every round here (no loop)
-  // last 16:
-  for (uint8_t im=0; im<15; im++)
+  // Following rounds: including a match for the 3rd place
+  for (uint8_t im=0; im<16; im++)
     {
       if (sector[rix] == 0xff || sector[rix+1] == 0xff )
-	continue;
-      if ( sector[rix] > sector[rix+1] )
+	draw[ixdraw++] = 0xff;
+      else if ( sector[rix] > sector[rix+1] )
 	{
 	  draw[ixdraw++] = draw[im];
 	}
@@ -844,10 +842,6 @@ void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
   tft.fillRect(0,60,tft_width,tft_height-60,BLACK);
 }
 
-void display_finals_n( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
-{
-}
-
 void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
 {
   tft.fillScreen( BLACK );
@@ -879,7 +873,7 @@ void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
       r_offset += i;
     }
   
-  uint8_t draw_offset = r_offset*3; // 3*(8,4,2.1) for nround from 1 to 4
+  uint8_t draw_offset = r_offset*2; // 2*(8,4,2.1) for nround from 1 to 4
   uint16_t rix = (cur_res_page * 256) + 96 + r_offset*2; // pointing after the 8*6 group matches  
 
   for (uint8_t im = 0; im<n_matches; im++)
@@ -888,42 +882,98 @@ void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
       tft.setFont( &FreeMonoBold9pt7b );
     else
       tft.setFont( &FreeMono9pt7b );
-    
-    tft.drawTextG( 0,yoff,countries[draw[draw_offset+im*2]],YELLOW,BLACK,1);
-    tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);	  
-    tft.drawTextG( tft_width/2-15,yoff,countries[draw[draw_offset+im*2+1]],YELLOW,BLACK,1);
+    if ( draw[draw_offset+im*2] != 0xff )
+    {
+      tft.drawTextG( 0,yoff,countries[draw[draw_offset+im*2]],YELLOW,BLACK,1);
+      tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);	  
+      tft.drawTextG( tft_width/2-15,yoff,countries[draw[draw_offset+im*2+1]],YELLOW,BLACK,1);
       
-    rix += 2;
-    getGoalStrings( rix, g0str, g1str );
-    drawGoalStrings( tft, g0str, g1str, yoff );
+      rix += 2;
+      getGoalStrings( rix, g0str, g1str );
+      drawGoalStrings( tft, g0str, g1str, yoff );
+    
+    
+      rix+=2;
+      yoff += 24;
+      iline++;
+    
 
-    rix+=2;
-    yoff += 24;
-    iline++;
+      if (n_round == 4)
+	{
+	  yoff += 48;
+	  tft.setFont( &FreeMono9pt7b );
+	  tft.drawTextG( tft_width/2 - 25*7,yoff,"Match for the third place",YELLOW,BLACK,1);
+	  yoff += 48;
+	  
+	  if ( iline == isel )
+	    tft.setFont( &FreeMonoBold9pt7b );
+	  
+	  tft.drawTextG( 0,yoff,countries[draw[draw_offset+2]],YELLOW,BLACK,1);
+	  tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);	  
+	  tft.drawTextG( tft_width/2-15,yoff,countries[draw[draw_offset+3]],YELLOW,BLACK,1);
+	  
+	  getGoalStrings( rix, g0str, g1str );
+	  drawGoalStrings( tft, g0str, g1str, yoff );
+	}
+    }
   }
-  
+}
+
+void changeFinalsGoals( uint8_t n_round, uint8_t isel, uint8_t gsign, uint8_t but )
+{
+  uint8_t r_offset = 0;
+  for ( uint8_t i=8; i>(1<<(4-n_round)); i/=2 ) // 0 8 12 14 15 
+    {
+      r_offset += i;
+    }
+  uint16_t rix = (cur_res_page * 256) + 96 + r_offset*2 + isel*2; // pointing after the 8*6 group matches
+  if (but == BUTTON1)
+    rix += 1;
+  sector[rix] += gsign;
+  dirty = true;
+  if (sector[rix] == 0xfe)
+    sector[rix] = 0xff;
 }
 
 void finals_page( Pico_ST7789 &tft)
 {
   groupRanking();
-  uint8_t isel = 0, iround = 1;
-  makeDraw();
-
+  uint8_t isel = 0, iround = 1;  
 
   while (true)
     {
+      makeDraw();
       display_finals(tft, iround, isel);
-      int but = 9;
-      but = getButton();
+      uint8_t but = getButton();
+      int8_t gsign = 1;
+      if (but & 0x80)
+	gsign = -1;
+      but &= 0x7f;
+
       switch (but)
 	{
-	case BUTTON4:
-	  iround = iround == 5?1:iround++;
+	case BUTTON3:
+	  if (dirty)
+	    writeResults();
+	  if (iround == 4)
+	    isel = (isel+1) % 2;
+	  else
+	    isel = (isel+1) % (1 << 4-iround);
 	  break;
+	case BUTTON4:
+	  if (gsign == -1)
+	    {
+	      if(dirty)
+		writeResults();
+	      return;
+	    }
+	  iround = iround == 4?1:iround+1;
+	  break;
+	default:
+	  changeFinalsGoals( iround, isel, gsign, but );
 	}
-      return;
     }
+  return;
 }
 
 void results_page(Pico_ST7789 &tft)
@@ -955,7 +1005,7 @@ void results_page(Pico_ST7789 &tft)
       // sign contains the long press
       // but is 1 2 3 or 4
       if ( but == BUTTON3 )
-	{
+	{ 
 	  if ( gsign == 1 )
 	    {
 	      isel = (isel+1)%6;
@@ -970,7 +1020,7 @@ void results_page(Pico_ST7789 &tft)
 	}
       else if ( (but == BUTTON1) || (but == BUTTON2))
 	{
-	  changeGoal( tft, group, isel, gsign, but );
+	  changeGoal( group, isel, gsign, but );
 	}
       else if ( gsign == 1 )
 	{
