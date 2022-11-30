@@ -247,7 +247,9 @@ void Pico_ST7789::commonST7789Init(const uint8_t *cmdList)
   spi_inst = SPI_TFT_PORT;
   // This example will use SPI0 at 4.0MHz.
   // This has to be before setting up pins and format!
-  spi_init(spi_inst, 16000000); // with 65MHz was still working...
+  //spi_init(spi_inst, 16000000); // with 65MHz was still working...
+  // for scope measurents
+  spi_init(spi_inst, 32000000); // with 65MHz was still working...
   // Now set up the SPI pins
   gpio_set_function(SPI_TFT_SCK, GPIO_FUNC_SPI);
   gpio_set_function(SPI_TFT_TX, GPIO_FUNC_SPI);
