@@ -545,6 +545,8 @@ void getGoalStrings( uint16_t ix, char *g0str, char *g1str)
   uint8_t g0=sector[ix];
   uint8_t g1=sector[ix+1];
 
+  //printf("getgoalstr ix %d g0 %d g1 %d\n", ix, g0, g1); 
+  
   if ( g0 == 0xff )
     {
       strcpy( g0str, "-" );
@@ -792,21 +794,19 @@ void makeDraw()
   for (uint8_t im=0; im<16; im++)
     {
       if (sector[rix] == 0xff || sector[rix+1] == 0xff )
-	draw[ixdraw++] = 0xff;
+	{
+	  draw[ixdraw++] = 0xff;
+	}
       else if ( sector[rix] > sector[rix+1] )
 	{
-	  draw[ixdraw++] = draw[im];
+	  draw[ixdraw++] = draw[2*im];
 	}
       else
 	{
-	  draw[ixdraw++] = draw[im+1];
+	  draw[ixdraw++] = draw[2*im+1];
 	}
       rix += 2;
     }
-
-  //for (int i=0; i<31; i++ ) {
-  //  printf("%d\n", draw[i]);
-  //}
   
 }
 
@@ -856,10 +856,10 @@ void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
       tft.drawTextG( tft_width/2-7.5*14,30, "Quarter Finals", 0x07e0, 0x07e0, 1 );
       break;
     case 3:
-      tft.drawTextG( tft_width/2-7.5*14,30, "Half Finals", 0x07e0, 0x07e0, 1 );
+      tft.drawTextG( tft_width/2-6*14,30, "Half Finals", 0x07e0, 0x07e0, 1 );
       break;
     case 4:
-      tft.drawTextG( tft_width/2-7.5*14,30, "Final", 0x07e0, 0x07e0, 1 );
+      tft.drawTextG( tft_width/2-2.5*14,30, "Final", 0x07e0, 0x07e0, 1 );
       break;
     }
 
@@ -872,7 +872,20 @@ void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
     {
       r_offset += i;
     }
-  
+
+  //printf("drawdump\n");
+  //int8_t t1 = 16, ix=0;
+  //for( int8_t ir2=0; ir2<4; ir2++)
+  //  {
+  //    for ( int8_t ir3=0; ir3<t1; ir3 += 2, ix +=2)
+  //	{
+  //	  printf( "%d - %d    ", draw[ix],draw[ix+1]);
+  //	}
+  //    printf("\n");
+  //    t1 /= 2;
+  //  }
+
+    
   uint8_t draw_offset = r_offset*2; // 2*(8,4,2.1) for nround from 1 to 4
   uint16_t rix = (cur_res_page * 256) + 96 + r_offset*2; // pointing after the 8*6 group matches  
 
@@ -882,42 +895,45 @@ void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
       tft.setFont( &FreeMonoBold9pt7b );
     else
       tft.setFont( &FreeMono9pt7b );
-    if ( draw[draw_offset+im*2] != 0xff )
-    {
-      tft.drawTextG( 0,yoff,countries[draw[draw_offset+im*2]],YELLOW,BLACK,1);
-      tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);	  
-      tft.drawTextG( tft_width/2-15,yoff,countries[draw[draw_offset+im*2+1]],YELLOW,BLACK,1);
-      
-      rix += 2;
-      getGoalStrings( rix, g0str, g1str );
-      drawGoalStrings( tft, g0str, g1str, yoff );
-    
-    
-      rix+=2;
-      yoff += 24;
-      iline++;
+
+    //printf("im %d r_off %d draw_off %d rix %x\n", im,r_offset,draw_offset,rix); 
     
 
-      if (n_round == 4)
-	{
-	  yoff += 48;
-	  tft.setFont( &FreeMono9pt7b );
-	  tft.drawTextG( tft_width/2 - 25*7,yoff,"Match for the third place",YELLOW,BLACK,1);
-	  yoff += 48;
-	  
-	  if ( iline == isel )
-	    tft.setFont( &FreeMonoBold9pt7b );
-	  
+    if ( draw[draw_offset+im*2] != 0xff )
+      tft.drawTextG( 0,yoff,countries[draw[draw_offset+im*2]],YELLOW,BLACK,1);
+    tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);
+    if ( draw[draw_offset+im*2+1] != 0xff )
+      tft.drawTextG( tft_width/2-15,yoff,countries[draw[draw_offset+im*2+1]],YELLOW,BLACK,1);
+    getGoalStrings( rix, g0str, g1str );
+    drawGoalStrings( tft, g0str, g1str, yoff );
+    
+    
+    rix+=2;
+    yoff += 24;
+    iline++;
+    
+
+    if (n_round == 4)
+      {
+	yoff += 48;
+	tft.setFont( &FreeMono9pt7b );
+	tft.drawTextG( tft_width/2 - 25*7,yoff,"Match for the third place",YELLOW,BLACK,1);
+	yoff += 48;
+	
+	if ( iline == isel )
+	  tft.setFont( &FreeMonoBold9pt7b );
+	if ( draw[draw_offset+2] != 0xff )
 	  tft.drawTextG( 0,yoff,countries[draw[draw_offset+2]],YELLOW,BLACK,1);
-	  tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);	  
+	tft.drawCharG( tft_width/2-28,yoff,'-',YELLOW,BLACK,1);	  
+	if ( draw[draw_offset+3] != 0xff )
 	  tft.drawTextG( tft_width/2-15,yoff,countries[draw[draw_offset+3]],YELLOW,BLACK,1);
-	  
-	  getGoalStrings( rix, g0str, g1str );
-	  drawGoalStrings( tft, g0str, g1str, yoff );
-	}
-    }
+	
+	getGoalStrings( rix, g0str, g1str );
+	drawGoalStrings( tft, g0str, g1str, yoff );
+      }
   }
 }
+
 
 void changeFinalsGoals( uint8_t n_round, uint8_t isel, uint8_t gsign, uint8_t but )
 {
@@ -929,7 +945,9 @@ void changeFinalsGoals( uint8_t n_round, uint8_t isel, uint8_t gsign, uint8_t bu
   uint16_t rix = (cur_res_page * 256) + 96 + r_offset*2 + isel*2; // pointing after the 8*6 group matches
   if (but == BUTTON1)
     rix += 1;
+  //printf("rix %d %x, %d, %d\n",rix,rix, gsign, sector[rix]);
   sector[rix] += gsign;
+  //printf("sector %d \n", sector[rix]);
   dirty = true;
   if (sector[rix] == 0xfe)
     sector[rix] = 0xff;
@@ -971,6 +989,7 @@ void finals_page( Pico_ST7789 &tft)
 	  break;
 	default:
 	  changeFinalsGoals( iround, isel, gsign, but );
+	  break;
 	}
     }
   return;
