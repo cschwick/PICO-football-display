@@ -778,6 +778,7 @@ void makeDraw()
   // First round
   uint16_t rix = (cur_res_page * 256) + 96;
   uint8_t ixdraw = 0;
+  uint8_t iydraw = 8;
   for (uint8_t ipair=0; ipair<4; ipair++)
     {
       team_group_result_s tg1 = team_group_results[ipair*2*4];
@@ -786,10 +787,10 @@ void makeDraw()
       draw[ixdraw++] = tg2.team_id;
       tg2 = team_group_results[ipair*2*4 + 4];
       tg1 = team_group_results[ipair*2*4 + 1];
-      draw[ixdraw++] = tg2.team_id;
-      draw[ixdraw++] = tg1.team_id;
+      draw[iydraw++] = tg2.team_id;
+      draw[iydraw++] = tg1.team_id;
     }
-
+  ixdraw = 16;
   // Following rounds: including a match for the 3rd place
   for (uint8_t im=0; im<16; im++)
     {
