@@ -857,10 +857,10 @@ void display_finals( Pico_ST7789 &tft, uint8_t n_round, uint8_t isel )
       tft.drawTextG( tft_width/2-7.5*14,30, "Quarter Finals", 0x07e0, 0x07e0, 1 );
       break;
     case 3:
-      tft.drawTextG( tft_width/2-6*14,30, "Half Finals", 0x07e0, 0x07e0, 1 );
+      tft.drawTextG( tft_width/2-7.5*14,30, "Half Finals", 0x07e0, 0x07e0, 1 );
       break;
     case 4:
-      tft.drawTextG( tft_width/2-2.5*14,30, "Final", 0x07e0, 0x07e0, 1 );
+      tft.drawTextG( tft_width/2-4*14,30, "Final", 0x07e0, 0x07e0, 1 );
       break;
     }
 
