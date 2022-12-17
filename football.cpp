@@ -792,7 +792,7 @@ void makeDraw()
     }
   ixdraw = 16;
   // Following rounds: including a match for the 3rd place
-  for (uint8_t im=0; im<16; im++)
+  for (uint8_t im=0; im<14; im++)
     {
       if (sector[rix] == 0xff || sector[rix+1] == 0xff )
 	{
@@ -808,7 +808,20 @@ void makeDraw()
 	}
       rix += 2;
     }
-  
+  rix -= 4;
+  for (uint8_t im=12; im<14; im++)
+    if (sector[rix] == 0xff || sector[rix+1] == 0xff )
+      {
+	draw[ixdraw++] = 0xff;
+      }
+    else if ( sector[rix] > sector[rix+1] )
+      {
+	draw[ixdraw++] = draw[2*im + 1];
+      }
+    else
+      {
+	draw[ixdraw++] = draw[2*im];
+      } 
 }
 
 void displayGroupRanking( Pico_ST7789 &tft, uint8_t group )
