@@ -77,7 +77,8 @@ team_group_result_s team_group_results[N_GROUPS * TEAMS_PER_GROUP];
 uint32_t offsets[] = {0 , 15000 , 30000 , 45000 , 60000 , 75000 , 90000 , 105000 , 120000 , 135000 , 150000 , 165000 , 180000 , 195000 , 210000 , 225000 , 240000 , 255000 , 270000 , 285000 , 300000 , 315000 , 330000 , 345000 , 360000 , 375000 , 390000 , 405000 , 420000 , 435000 , 450000 , 465000  };
 
 // offsets for the big introduction pictures
-uint32_t picoffsets[] = {0x10175300, 0x10191500, 0x101AD700, 0x101C9900};
+uint32_t picoffsets[] = {0x10175300, 0x1019ab00, 0x101c0300};
+//uint32_t picoffsets[] = {0x10175300, 0x10191500, 0x101AD700, 0x101C9900};
 uint32_t resultoffset = 0x1FF000;
 // stadium is 320x240 pixel and hence 153600 long
 // hence the first free page is at 0x101C9900 + 0x25800 = 0x101EF100
@@ -1074,17 +1075,17 @@ void footballField( Pico_ST7789 &tft )
   // 1 : Coup black
   // 2 : ball
   // 3 : stadium: length 153600 of 0x25800
-  tft.drawImageF( (tft_width-320)/2, 0, 320, 240, (uint16_t*)picoffsets[3] );
+  tft.drawImageF( (tft_width-320)/2, 0, 320, 240, (uint16_t*)picoffsets[0] );
   tft.setFont( &FreeMonoOblique12pt7b );
   char mtxt[] = {"Worldcup 2022"};
   tft.drawTextG( tft_width/2-7.5*14,30, mtxt, GREEN, BLACK, 1 );
   getButton();
 
   tft.fillScreen( 0xEF7D);
-  tft.drawImageF(( tft_width-240)/2, 0, 240, 240, (uint16_t*)picoffsets[2] );
+  tft.drawImageF(( tft_width-320)/2, 0, 320, 240, (uint16_t*)picoffsets[1] );
   getButton();
   tft.fillScreen( WHITE);
-  tft.drawImageF( (tft_width-240)/2, 0, 240, 240, (uint16_t*)picoffsets[0] );
+  tft.drawImageF( (tft_width-320)/2, 0, 320, 240, (uint16_t*)picoffsets[2] );
   for (int i=0; i<6; i++) {
     sleep_ms(500);
     gpio_xor_mask( 1<<TFT_BACKLIGHT );
